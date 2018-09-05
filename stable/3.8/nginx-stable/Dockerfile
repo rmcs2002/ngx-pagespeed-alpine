@@ -169,11 +169,25 @@ COPY --from=pagespeed /usr/src/ngxpagespeed /usr/src/ngxpagespeed/
 
 WORKDIR /usr/src/nginx
 
+
+# Lua
+ENV LUA_VERSION=5.1
+ENV LUA_PACKAGE=lua${LUA_VERSION}
+RUN apk --update add ${LUA_PACKAGE} ${LUA_PACKAGE}-dev \
+    && cd /usr/src \
+    && wget -O - https://github.com/simplresty/ngx_devel_kit/archive/v0.3.1rc1.tar.gz | tar xzf - \
+    && wget -O - https://github.com/openresty/lua-nginx-module/archive/v0.10.13.tar.gz | tar xzf - \
+    && export LUA_LIB=/usr/local/lib/lua \
+    && export LUA_INC=/usr/local/include
+
 RUN tar zxf ../nginx-${NGINX_VERSION}.tar.gz --strip-components=1 -C . && \
     ./configure \
         ${NGINX_BUILD_CONFIG} \
-        --add-module=/usr/src/ngxpagespeed \
-        --with-ld-opt="-Wl,-z,relro,--start-group -lapr-1 -laprutil-1 -licudata -licuuc -lpng -lturbojpeg -ljpeg" \
+    --add-module=/usr/src/ngxpagespeed \
+    --with-ld-opt="-Wl,-rpath,/usr/local/lib/lua" \
+    --add-module=/usr/src/ngx_devel_kit-0.3.1rc1 \
+    --add-module=/usr/src/lua-nginx-module-0.10.13 \ 
+    --with-ld-opt="-Wl,-z,relro,--start-group -lapr-1 -laprutil-1 -licudata -licuuc -lpng -lturbojpeg -ljpeg" \
     && \
     make install -j`nproc`
 
@@ -214,14 +228,20 @@ RUN apk --no-cache upgrade && \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
             | xargs apk add --no-cache \
     && \
-    apk add --no-cache tzdata
+    apk add --no-cache tzdata luajit
 
-RUN addgroup -S nginx && \
-    adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx && \
-    install -g nginx -o nginx -d /var/cache/ngx_pagespeed && \
+RUN addgroup -S www-data && \
+    adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G www-data www-data && \
+    install -g www-data -o www-data -d /var/cache/ngx_pagespeed && \
     mkdir -p /var/log/nginx && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log
+
+RUN apk add --update --no-cache bind-tools
+
+ADD http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz /etc/nginx/geoip/GeoIP.dat.gz
+RUN gunzip /etc/nginx/geoip/GeoIP.dat.gz
+COPY conf/lua /etc/nginx/lua
 
 EXPOSE 80
 
