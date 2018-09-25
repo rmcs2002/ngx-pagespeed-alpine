@@ -228,10 +228,10 @@ RUN apk --no-cache upgrade && \
             | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
             | xargs apk add --no-cache \
     && \
-    apk add --no-cache tzdata luajit
+    apk add --no-cache tzdata luajit curl
 
-RUN addgroup -S www-data && \
-    adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G www-data www-data && \
+RUN addgroup -g 82 -S www-data && \
+    adduser -u 82 -D -S -h /var/cache/nginx -s /sbin/nologin -G www-data www-data && \
     install -g www-data -o www-data -d /var/cache/ngx_pagespeed && \
     mkdir -p /var/log/nginx && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
