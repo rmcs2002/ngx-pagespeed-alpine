@@ -237,7 +237,7 @@ RUN addgroup -g 82 -S www-data && \
     ln -sf /dev/stdout /var/log/nginx/access.log && \
     ln -sf /dev/stderr /var/log/nginx/error.log
 
-RUN apk add --update --no-cache bind-tools
+RUN apk add --update --no-cache bind-tools openssl
 
 ADD http://geolite.maxmind.com/download/geoip/database/GeoLiteCountry/GeoIP.dat.gz /etc/nginx/geoip/GeoIP.dat.gz
 RUN gunzip /etc/nginx/geoip/GeoIP.dat.gz
